@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.onnx
+models/nanotrack/*.onnx
+.env
+venv/
