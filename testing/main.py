@@ -25,9 +25,9 @@ import time
 import cv2
 import yaml
 
-from tracker.camera import Camera
-from tracker.kcf_tracker import KCFTracker
-from tracker.nanotrack_tracker import NanoTracker
+from trackers.camera import Camera
+from trackers.kcf_tracker import KCFTracker
+from trackers.nanotrack_tracker import NanoTracker
 
 from ground_station.gui import draw_overlay
 
