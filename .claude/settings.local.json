@@ -4,5 +4,7 @@
       "Bash(git add:*)",
       "Bash(git commit -m ':*)"
     ]
-  }
+  },
+
+  "includeCoAuthoredBy": false
 }

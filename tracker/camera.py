@@ -52,6 +52,13 @@ class Camera:
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._cfg["height"])
         self._cap.set(cv2.CAP_PROP_FPS,          self._cfg["fps"])
 
+        if self._cfg.get("autofocus", False):
+            self._cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
+        else:
+            self._cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+            if "focus" in self._cfg:
+                self._cap.set(cv2.CAP_PROP_FOCUS, self._cfg["focus"])
+
     def read(self) -> np.ndarray:
         if self._cap is None:
             raise RuntimeError("Camera is not open. Call open() first.")

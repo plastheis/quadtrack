@@ -8,6 +8,8 @@ camera:
   width: 1280
   height: 720
   fps: 30
+  autofocus: true        # true = camera-controlled autofocus | false = manual (set focus below)
+  # focus: 0            # Manual focus value (0–255). Only used when autofocus: false.
   # GStreamer pipeline for future CSI support.
   # Uncomment and set backend: csi when migrating to the SBC.
   # gstreamer_pipeline: "nvarguscamerasrc ! video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1 ! nvvidconv ! video/x-raw,format=BGRx ! videoconvert ! video/x-raw,format=BGR ! appsink drop=1"
