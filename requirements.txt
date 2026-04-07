@@ -1,0 +1,6 @@
+# On Linux SBC: replace onnxruntime-gpu with onnxruntime or the vendor NPU wheel
+opencv-python>=4.8.0
+pyserial>=3.5
+onnxruntime-gpu>=1.17.0
+pyyaml>=6.0
+numpy>=1.24.0
