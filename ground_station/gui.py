@@ -60,15 +60,14 @@ def draw_overlay(
     cv2.line(out, (cx, ry2), (cx,  h), _GREEN, 1, cv2.LINE_AA)  # bottom
     _corner_brackets(out, rx1, ry1, rx2, ry2, _GREEN, thickness=2, arm=max(10, roi_half // 3))
 
-    # --- Tracking bbox (orange) or LOST label ---
+    # --- Tracking bbox (orange) with TRACKING label below, or nothing ---
     if tracking and bbox is not None:
         bx, by, bw, bh = bbox
         cv2.rectangle(out, (bx, by), (bx + bw, by + bh), _ORANGE, 2)
-    elif not tracking and bbox is None:
-        label = "LOST"
-        (tw, _), _ = cv2.getTextSize(label, _FONT, 0.65, 2)
-        cv2.putText(out, label, (cx - tw // 2, ry1 - 8), _FONT, 0.65, _BLACK, 4, cv2.LINE_AA)
-        cv2.putText(out, label, (cx - tw // 2, ry1 - 8), _FONT, 0.65, _RED,   2, cv2.LINE_AA)
+        label = "TRACKING"
+        (tw, th), _ = cv2.getTextSize(label, _FONT, 0.55, 2)
+        cv2.putText(out, label, (cx - tw // 2, ry2 + th + 6), _FONT, 0.55, _BLACK,  3, cv2.LINE_AA)
+        cv2.putText(out, label, (cx - tw // 2, ry2 + th + 6), _FONT, 0.55, _ORANGE, 1, cv2.LINE_AA)
 
     # --- FPS (top-left) ---
     _text(out, f"{fps:.1f} FPS", (margin, margin + 18), scale=0.6)

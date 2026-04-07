@@ -5,8 +5,8 @@
 camera:
   backend: usb          # usb | csi
   index: 0              # USB only — VideoCapture device index
-  width: 1280
-  height: 720
+  width: 640
+  height: 480
   fps: 30
   autofocus: true        # true = camera-controlled autofocus | false = manual (set focus below)
   # focus: 0            # Manual focus value (0–255). Only used when autofocus: false.
@@ -15,7 +15,7 @@ camera:
   # gstreamer_pipeline: "nvarguscamerasrc ! video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1 ! nvvidconv ! video/x-raw,format=BGRx ! videoconvert ! video/x-raw,format=BGR ! appsink drop=1"
 
 tracker:
-  algorithm: kcf                 # kcf | nanotrack
+  algorithm: nanotrack                 # kcf | nanotrack
   nanotrack_backbone: models/nanotrack/nanotrack_backbone_sim.onnx
   nanotrack_head:     models/nanotrack/nanotrack_head_sim.onnx
 
