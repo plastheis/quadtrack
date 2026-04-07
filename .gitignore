@@ -4,4 +4,3 @@ __pycache__/
 models/nanotrack/*.onnx
 .env
 venv/
-CLAUDE.md
