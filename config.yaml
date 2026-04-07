@@ -15,8 +15,9 @@ camera:
   # gstreamer_pipeline: "nvarguscamerasrc ! video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1 ! nvvidconv ! video/x-raw,format=BGRx ! videoconvert ! video/x-raw,format=BGR ! appsink drop=1"
 
 tracker:
-  algorithm: kcf        # kcf | nanotrack
-  nanotrack_model: models/nanotrack/nanotrack_backbone.onnx
+  algorithm: kcf                 # kcf | nanotrack
+  nanotrack_backbone: models/nanotrack/nanotrack_backbone_sim.onnx
+  nanotrack_head:     models/nanotrack/nanotrack_head_sim.onnx
 
 inference:
   device: cuda          # cuda | npu | cpu

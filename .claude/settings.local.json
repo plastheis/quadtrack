@@ -1,10 +1,16 @@
 {
+  "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
       "Bash(git add:*)",
-      "Bash(git commit -m ':*)"
+      "Bash(git commit -m ':*)",
+      "Bash(wc:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.opencv.org)",
+      "Bash(.venv/Scripts/python -c \"import cv2; print\\(cv2.__version__\\); print\\([x for x in dir\\(cv2\\) if 'racker' in x]\\)\")",
+      "Bash(.venv/Scripts/python -c \"import cv2; print\\(hasattr\\(cv2, 'legacy'\\)\\); print\\([x for x in dir\\(cv2.legacy\\) if 'racker' in x] if hasattr\\(cv2, 'legacy'\\) else 'no legacy'\\)\")",
+      "Bash(.venv/Scripts/pip list:*)",
+      "WebFetch(domain:forum.opencv.org)"
     ]
-  },
-
-  "includeCoAuthoredBy": false
+  }
 }
