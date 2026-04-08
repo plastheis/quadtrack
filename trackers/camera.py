@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import sys
+import time
 
 import cv2
 import numpy as np
 import yaml
+
+from core.frame import Frame
 
 
 def _build_gstreamer_pipeline(cfg: dict) -> str:
@@ -59,13 +62,13 @@ class Camera:
             if "focus" in self._cfg:
                 self._cap.set(cv2.CAP_PROP_FOCUS, self._cfg["focus"])
 
-    def read(self) -> np.ndarray:
+    def read(self) -> Frame:
         if self._cap is None:
             raise RuntimeError("Camera is not open. Call open() first.")
-        ret, frame = self._cap.read()
+        ret, image = self._cap.read()
         if not ret:
             raise RuntimeError("Failed to read frame from camera.")
-        return frame
+        return Frame(image=image, timestamp=time.perf_counter())
 
     def release(self) -> None:
         if self._cap is not None:
@@ -88,7 +91,7 @@ if __name__ == "__main__":
         print("Camera opened. Press 'q' to quit.")
         while True:
             frame = cam.read()
-            cv2.imshow("QuadTrack - Camera Test", frame)
+            cv2.imshow("QuadTrack - Camera Test", frame.image)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
 

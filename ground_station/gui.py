@@ -3,6 +3,8 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
+from core.bbox import BBox
+
 # Colours (BGR)
 _WHITE  = (255, 255, 255)
 _BLACK  = (0,   0,     0)
@@ -37,7 +39,7 @@ def _corner_brackets(img: np.ndarray, x1: int, y1: int, x2: int, y2: int,
 
 def draw_overlay(
     frame: np.ndarray,
-    bbox: tuple | None,
+    bbox: BBox | None,
     tracking: bool,
     roi_half: int,
     fps: float,
@@ -62,7 +64,7 @@ def draw_overlay(
 
     # --- Tracking bbox (orange) with TRACKING label below, or nothing ---
     if tracking and bbox is not None:
-        bx, by, bw, bh = bbox
+        bx, by, bw, bh = bbox.to_xywh()
         cv2.rectangle(out, (bx, by), (bx + bw, by + bh), _ORANGE, 2)
         label = "TRACKING"
         (tw, th), _ = cv2.getTextSize(label, _FONT, 0.55, 2)

@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import time
+
 import cv2
-import numpy as np
+
+from core.bbox import BBox
+from core.frame import Frame
+from trackers.base import BaseTracker, TrackResult
 
 
-class NanoTracker:
+class NanoTracker(BaseTracker):
     """NanoTrack tracker via OpenCV's built-in cv2.TrackerNano.
 
     Requires two v2 ONNX model files (v3 has a shape mismatch in OpenCV):
@@ -13,6 +18,8 @@ class NanoTracker:
 
     Paths are set in config.yaml under tracker.nanotrack_backbone and
     tracker.nanotrack_head.
+    cv2.TrackerNano does not expose a confidence score; 1.0 is used as a
+    placeholder when tracking is active.
     """
 
     def __init__(self, cfg: dict) -> None:
@@ -21,20 +28,17 @@ class NanoTracker:
         params.neckhead  = cfg["tracker"]["nanotrack_head"]
         self._tracker = cv2.TrackerNano_create(params)
 
-    def init(self, frame: np.ndarray, bbox: tuple) -> None:
-        """Initialise tracker with the first-frame bounding box.
+    def init(self, frame: Frame, bbox: BBox) -> None:
+        """Initialise tracker with the first-frame bounding box."""
+        self._tracker.init(frame.image, bbox.to_xywh())
 
-        Args:
-            frame: BGR image.
-            bbox:  (x, y, w, h) in pixels.
-        """
-        self._tracker.init(frame, bbox)
-
-    def update(self, frame: np.ndarray) -> tuple[tuple, bool]:
-        """Run one tracking step.
-
-        Returns:
-            (bbox, ok) where bbox is (x, y, w, h) and ok is False if lost.
-        """
-        ok, bbox = self._tracker.update(frame)
-        return tuple(int(v) for v in bbox), bool(ok)
+    def update(self, frame: Frame) -> TrackResult:
+        """Run one tracking step."""
+        t0 = time.perf_counter()
+        ok, cv2_bbox = self._tracker.update(frame.image)
+        return TrackResult(
+            bbox=BBox.from_xywh(*cv2_bbox),
+            confidence=1.0 if ok else 0.0,
+            latency_s=time.perf_counter() - t0,
+            source="nanotrack",
+        )

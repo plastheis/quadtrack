@@ -29,6 +29,7 @@ import time
 import cv2
 import yaml
 
+from core.bbox import BBox
 from trackers.camera import Camera
 from trackers.kcf_tracker import KCFTracker
 from trackers.nanotrack_tracker import NanoTracker
@@ -50,7 +51,7 @@ def _load_config(path: str) -> dict:
 def _make_tracker(cfg: dict):
     algo = cfg["tracker"]["algorithm"].strip().lower()
     if algo == "kcf":
-        return KCFTracker()
+        return KCFTracker(cfg)
     if algo == "nanotrack":
         return NanoTracker(cfg)
     if algo == "nanotrack_accel":
@@ -93,7 +94,7 @@ def main(config_path: str = "config.yaml") -> None:
     frame_q = _start_capture_thread(cam)
 
     tracking    = False
-    bbox: tuple | None = None
+    bbox: BBox | None = None
     roi_half    = _DEFAULT_ROI_HALF
     prev_time   = time.perf_counter()
     fps         = 0.0
@@ -111,13 +112,14 @@ def main(config_path: str = "config.yaml") -> None:
 
             # Tracker step
             if tracking:
-                bbox, ok = tracker.update(frame)
-                if not ok:
+                result = tracker.update(frame)
+                bbox   = result.bbox
+                if not result.confidence:
                     tracking = False
                     bbox = None
 
             # Draw HUD
-            display = draw_overlay(frame, bbox, tracking, roi_half, fps)
+            display = draw_overlay(frame.image, bbox, tracking, roi_half, fps)
             cv2.imshow("QuadTrack", display)
 
             key = cv2.waitKey(1) & 0xFF
@@ -136,9 +138,9 @@ def main(config_path: str = "config.yaml") -> None:
                 roi_half = min(_ROI_MAX, roi_half + _ROI_STEP)
 
             elif key == ord(" ") and not tracking:
-                h, w = frame.shape[:2]
+                h, w = frame.image.shape[:2]
                 cx, cy = w // 2, h // 2
-                bbox = (cx - roi_half, cy - roi_half, roi_half * 2, roi_half * 2)
+                bbox = BBox(cx=float(cx), cy=float(cy), w=float(roi_half * 2), h=float(roi_half * 2))
                 tracker.init(frame, bbox)
                 tracking = True
 

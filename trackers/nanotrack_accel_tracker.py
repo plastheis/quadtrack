@@ -22,10 +22,15 @@ Key design notes:
 """
 from __future__ import annotations
 
+import time
 import warnings
 
 import cv2
 import numpy as np
+
+from core.bbox import BBox
+from core.frame import Frame
+from trackers.base import BaseTracker, TrackResult
 
 # ---------------------------------------------------------------------------
 # Hyperparameters — matched to OpenCV TrackerNano source
@@ -42,13 +47,8 @@ SCORE_THRESHOLD  = 0.25      # below this → tracking lost
 MIN_SIZE         = 10        # minimum bbox side (px)
 
 
-class NanoTrackAccel:
-    """NanoTrack tracker using ONNX Runtime (CUDA/CPU) or RKNN (NPU).
-
-    Public interface (same as KCFTracker / NanoTracker):
-        init(frame, bbox)              — first-frame initialisation
-        update(frame) → (bbox, ok)    — per-frame tracking step
-    """
+class NanoTrackAccel(BaseTracker):
+    """NanoTrack tracker using ONNX Runtime (CUDA/CPU) or RKNN (NPU)."""
 
     def __init__(self, cfg: dict) -> None:
         device = cfg.get("inference", {}).get("device", "cpu").strip().lower()
@@ -259,13 +259,12 @@ class NanoTrackAccel:
     # Public tracker interface
     # ------------------------------------------------------------------
 
-    def init(self, frame: np.ndarray, bbox: tuple) -> None:
-        """Initialise on *frame* with *bbox* = (x, y, w, h)."""
-        x, y, bw, bh = bbox
-        self._cx = float(x + bw / 2)
-        self._cy = float(y + bh / 2)
-        self._w  = float(bw)
-        self._h  = float(bh)
+    def init(self, frame: Frame, bbox: BBox) -> None:
+        """Initialise on *frame* with *bbox*."""
+        self._cx = bbox.cx
+        self._cy = bbox.cy
+        self._w  = bbox.w
+        self._h  = bbox.h
 
         # Template crop
         # OpenCV extracts sz pixels and runs backbone at EXEMPLAR_SIZE (127).
@@ -280,13 +279,14 @@ class NanoTrackAccel:
         sz    = int(np.sqrt(wz * hz))
         sx    = int(sz * (INSTANCE_SIZE / EXEMPLAR_SIZE))   # ≈ 2 × sz
 
-        crop   = self._get_subwindow(frame, self._cx, self._cy, sx, INSTANCE_SIZE)
+        crop   = self._get_subwindow(frame.image, self._cx, self._cy, sx, INSTANCE_SIZE)
         feat   = self._run_backbone(self._preprocess(crop))   # [1,C,16,16]
         self._t_feat = feat[:, :, self._t_lo : self._t_hi, self._t_lo : self._t_hi]
 
-    def update(self, frame: np.ndarray) -> tuple[tuple, bool]:
-        """Track one frame.  Returns ((x,y,w,h), ok)."""
-        h_img, w_img = frame.shape[:2]
+    def update(self, frame: Frame) -> TrackResult:
+        """Track one frame."""
+        t0 = time.perf_counter()
+        h_img, w_img = frame.image.shape[:2]
 
         # Search window size — matches OpenCV update()
         s_sum  = self._w + self._h
@@ -300,7 +300,7 @@ class NanoTrackAccel:
         tw_s = self._w * scale_z
         th_s = self._h * scale_z
 
-        crop   = self._get_subwindow(frame, self._cx, self._cy, int(sx), INSTANCE_SIZE)
+        crop   = self._get_subwindow(frame.image, self._cx, self._cy, int(sx), INSTANCE_SIZE)
         s_feat = self._run_backbone(self._preprocess(crop))   # [1,C,16,16]
         cls, loc = self._run_head(self._t_feat, s_feat)
 
@@ -371,6 +371,10 @@ class NanoTrackAccel:
         self._w  = new_w
         self._h  = new_h
 
-        x = int(new_cx - new_w / 2)
-        y = int(new_cy - new_h / 2)
-        return (x, y, int(new_w), int(new_h)), best_score > SCORE_THRESHOLD
+        ok = best_score > SCORE_THRESHOLD
+        return TrackResult(
+            bbox=BBox(cx=new_cx, cy=new_cy, w=new_w, h=new_h),
+            confidence=best_score if ok else 0.0,
+            latency_s=time.perf_counter() - t0,
+            source="nanotrack_accel",
+        )
