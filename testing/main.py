@@ -32,6 +32,7 @@ import yaml
 from trackers.camera import Camera
 from trackers.kcf_tracker import KCFTracker
 from trackers.nanotrack_tracker import NanoTracker
+from trackers.nanotrack_accel_tracker import NanoTrackAccel
 
 from ground_station.gui import draw_overlay
 
@@ -52,6 +53,8 @@ def _make_tracker(cfg: dict):
         return KCFTracker()
     if algo == "nanotrack":
         return NanoTracker(cfg)
+    if algo == "nanotrack_accel":
+        return NanoTrackAccel(cfg)
     raise ValueError(f"Unknown tracker algorithm: {algo!r}")
 
 

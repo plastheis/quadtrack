@@ -15,14 +15,20 @@ camera:
   # gstreamer_pipeline: "nvarguscamerasrc ! video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1 ! nvvidconv ! video/x-raw,format=BGRx ! videoconvert ! video/x-raw,format=BGR ! appsink drop=1"
 
 tracker:
-  algorithm: kcf                 # kcf | nanotrack
+  algorithm: nanotrack_accel                 # kcf | nanotrack | nanotrack_accel
   nanotrack_backbone: models/nanotrack/nanotrack_backbone_sim.onnx
   nanotrack_head:     models/nanotrack/nanotrack_head_sim.onnx
+  # nanotrack_accel: ONNX Runtime (CUDA/CPU) — NanoTrack v3
+  nanotrack_accel_backbone: models/nanotrackv3/nanotrack_backbone.onnx
+  nanotrack_accel_head:     models/nanotrackv3/nanotrack_head.onnx
+  # nanotrack_accel: RKNN (NPU) — convert from ONNX externally via rknn-toolkit2
+  nanotrack_accel_backbone_rknn: models/nanotrackv3/nanotrack_backbone.rknn
+  nanotrack_accel_head_rknn:     models/nanotrackv3/nanotrack_head.rknn
 
 inference:
-  device: cpu          # cuda | npu | cpu
+  device: cuda          # cuda | npu | cpu
   # cuda → onnxruntime-gpu on Windows/NVIDIA
-  # npu  → platform-specific execution provider on SBC (future)
+  # npu  → rknnlite (on Rockchip SBC) or rknn-toolkit2 simulation (PC); falls back to CPU
   # cpu  → universal fallback
 
 serial:

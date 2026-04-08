@@ -32,3 +32,13 @@ flight-interface/uart.py (flight controller state) ─────────�
 - ONNX Runtime
 
 Model weights (`.onnx`) are excluded from the repository and must be downloaded separately before running.
+
+## Changelog
+
+### 2026-04-07
+- **Added `nanotrack_accel` tracker** (`trackers/nanotrack_accel_tracker.py`) — full NanoTrack inference via ONNX Runtime, bypassing `cv2.TrackerNano` to enable explicit device control:
+  - `device: cuda` → ONNX Runtime `CUDAExecutionProvider` (requires `onnxruntime-gpu`)
+  - `device: npu` → RKNN via `rknnlite` (on Rockchip SBC) or `rknn-toolkit2` (PC simulation); auto-falls back to CPU if RKNN libraries are absent
+  - `device: cpu` → ONNX Runtime `CPUExecutionProvider`
+  - Reuses existing `nanotrack_backbone_sim.onnx` / `nanotrack_head_sim.onnx` for CUDA/CPU; separate `.rknn` files (converted externally) for NPU
+  - Select via `config.yaml`: `tracker.algorithm: nanotrack_accel`

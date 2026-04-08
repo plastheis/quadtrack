@@ -10,7 +10,14 @@
       "Bash(.venv/Scripts/python -c \"import cv2; print\\(cv2.__version__\\); print\\([x for x in dir\\(cv2\\) if 'racker' in x]\\)\")",
       "Bash(.venv/Scripts/python -c \"import cv2; print\\(hasattr\\(cv2, 'legacy'\\)\\); print\\([x for x in dir\\(cv2.legacy\\) if 'racker' in x] if hasattr\\(cv2, 'legacy'\\) else 'no legacy'\\)\")",
       "Bash(.venv/Scripts/pip list:*)",
-      "WebFetch(domain:forum.opencv.org)"
+      "WebFetch(domain:forum.opencv.org)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(python3 -c \"import onnxruntime; print\\(onnxruntime.__version__\\); print\\(onnxruntime.get_available_providers\\(\\)\\)\")",
+      "Bash(python -c \"import onnxruntime; print\\(onnxruntime.__version__\\); print\\(onnxruntime.get_available_providers\\(\\)\\)\")",
+      "Bash(python3 -c \"import onnx; import onnx.numpy_helper; import onnxruntime as ort; sess = ort.InferenceSession\\('/c/Users/plas/projects/quadtrack/models/nanotrack/nanotrack_backbone_sim.onnx', providers=['CPUExecutionProvider']\\); print\\('BACKBONE INPUTS:'\\); [print\\(' ', i.name, i.shape, i.type\\) for i in sess.get_inputs\\(\\)]; print\\('BACKBONE OUTPUTS:'\\); [print\\(' ', o.name, o.shape, o.type\\) for o in sess.get_outputs\\(\\)]\")",
+      "Bash(python:*)",
+      "WebFetch(domain:api.github.com)"
     ]
   }
 }
