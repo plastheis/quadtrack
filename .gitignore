@@ -5,3 +5,4 @@ models/nanotrack/*.onnx
 .env
 venv/
 benchmark/datasets/anti-uav
+benchmark_results/

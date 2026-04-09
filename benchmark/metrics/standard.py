@@ -108,7 +108,7 @@ def success_auc(iou_values: list[float]) -> float:
     thresholds = np.linspace(0.0, 1.0, 101)
     rates = np.array([(arr >= t).mean() for t in thresholds])
     # span is 1.0, so np.trapz gives the normalised AUC directly
-    return float(np.trapz(rates, thresholds))
+    return float(np.trapezoid(rates, thresholds))
 
 
 def precision_auc(center_distances: list[float]) -> float:
@@ -130,7 +130,7 @@ def precision_auc(center_distances: list[float]) -> float:
     thresholds = np.linspace(0.0, 50.0, 51)
     rates = np.array([(arr <= d).mean() for d in thresholds])
     # span is 50 px, explicit normalisation required
-    return float(np.trapz(rates, thresholds) / 50.0)
+    return float(np.trapezoid(rates, thresholds) / 50.0)
 
 
 # ---------------------------------------------------------------------------

@@ -7,10 +7,10 @@ Expected on-disk layout:
     <dataset_root>/
         <split>/                      # e.g. train / val / test
             <sequence_name>/
-                IR/                   # IR frames: 000001.jpg, 000002.jpg, …
-                RGB/                  # RGB frames (optional)
-                IR_label.json
-                RGB_label.json
+                infrared.mp4          # IR video
+                visible.mp4           # RGB video (optional)
+                infrared.json         # IR labels
+                visible.json          # RGB labels
 
 Label JSON schema:
     {
@@ -32,6 +32,9 @@ from core.bbox import BBox
 from core.frame import Frame
 
 
+_MODALITY_FILE = {"IR": "infrared", "RGB": "visible"}
+
+
 class AntiUAVSequence(BaseSequence):
     """One sequence from the Anti-UAV / Anti-UAV410 dataset."""
 
@@ -39,26 +42,26 @@ class AntiUAVSequence(BaseSequence):
         self._dir = seq_dir
         self._modality = modality
 
-        label_path = seq_dir / f"{modality}_label.json"
+        stem = _MODALITY_FILE[modality]
+        label_path = seq_dir / f"{stem}.json"
         with open(label_path) as f:
             data = json.load(f)
 
         self._gt_rects: list[list[float]] = data["gt_rect"]
         self._exists: list[int] = data["exist"]
-
-        # Collect sorted frame paths
-        frame_dir = seq_dir / modality
-        self._frame_paths: list[Path] = sorted(frame_dir.glob("*.jpg"))
-        if not self._frame_paths:
-            self._frame_paths = sorted(frame_dir.glob("*.png"))
+        self._video_path: Path = seq_dir / f"{stem}.mp4"
 
         n_labels = len(self._exists)
-        n_frames = len(self._frame_paths)
+        cap = cv2.VideoCapture(str(self._video_path))
+        n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        cap.release()
+
         if n_frames != n_labels:
             # Truncate to the shorter of the two (some datasets have off-by-one)
-            self._frame_paths = self._frame_paths[:n_labels]
-            self._exists = self._exists[:n_frames]
-            self._gt_rects = self._gt_rects[:n_frames]
+            n = min(n_frames, n_labels)
+            self._exists = self._exists[:n]
+            self._gt_rects = self._gt_rects[:n]
+        self._n_frames = min(n_frames, n_labels)
 
     # ------------------------------------------------------------------
     # BaseSequence interface
@@ -73,30 +76,34 @@ class AntiUAVSequence(BaseSequence):
         return self._modality
 
     def __len__(self) -> int:
-        return len(self._frame_paths)
+        return self._n_frames
 
     def __iter__(self) -> Iterator[tuple[Frame, GroundTruthFrame]]:
-        for path, exist, rect in zip(
-            self._frame_paths, self._exists, self._gt_rects
-        ):
-            image = cv2.imread(str(path))
-            if image is None:
-                raise RuntimeError(f"Failed to read frame: {path}")
-            frame = Frame(image=image, timestamp=time.perf_counter())
-            gt = self._make_gt(exist, rect)
-            yield frame, gt
+        cap = cv2.VideoCapture(str(self._video_path))
+        try:
+            for exist, rect in zip(self._exists, self._gt_rects):
+                ok, image = cap.read()
+                if not ok:
+                    break
+                frame = Frame(image=image, timestamp=time.perf_counter())
+                gt = self._make_gt(exist, rect)
+                yield frame, gt
+        finally:
+            cap.release()
 
     def init_frame(self) -> tuple[Frame, BBox, int]:
-        for idx, (path, exist, rect) in enumerate(
-            zip(self._frame_paths, self._exists, self._gt_rects)
-        ):
-            if exist:
-                image = cv2.imread(str(path))
-                if image is None:
-                    raise RuntimeError(f"Failed to read init frame: {path}")
-                frame = Frame(image=image, timestamp=time.perf_counter())
-                bbox = BBox.from_xywh(*rect)
-                return frame, bbox, idx
+        cap = cv2.VideoCapture(str(self._video_path))
+        try:
+            for idx, (exist, rect) in enumerate(zip(self._exists, self._gt_rects)):
+                ok, image = cap.read()
+                if not ok:
+                    break
+                if exist:
+                    frame = Frame(image=image, timestamp=time.perf_counter())
+                    bbox = BBox.from_xywh(*rect)
+                    return frame, bbox, idx
+        finally:
+            cap.release()
         raise ValueError(f"Sequence '{self.name}' has no visible frames.")
 
     # ------------------------------------------------------------------
@@ -131,7 +138,7 @@ class AntiUAVDataset(BaseDataset):
                 f"and the split '{split}' exists."
             )
 
-        label_filename = f"{modality}_label.json"
+        label_filename = f"{_MODALITY_FILE[modality]}.json"
         self._seq_dirs: list[Path] = sorted(
             d for d in split_dir.iterdir()
             if d.is_dir() and (d / label_filename).exists()
