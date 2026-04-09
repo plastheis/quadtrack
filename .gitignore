@@ -4,4 +4,4 @@ __pycache__/
 models/nanotrack/*.onnx
 .env
 venv/
-benchmark\datasets\anti-uav
+benchmark/datasets/anti-uav
