@@ -15,7 +15,9 @@ camera:
   # gstreamer_pipeline: "nvarguscamerasrc ! video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1 ! nvvidconv ! video/x-raw,format=BGRx ! videoconvert ! video/x-raw,format=BGR ! appsink drop=1"
 
 tracker:
-  algorithm: kcf                 # kcf | nanotrack | nanotrack_accel
+  algorithms:                    # list; supports multi-tracker + fusion
+    - algorithm: kcf             # kcf | nanotrack | nanotrack_accel
+  fusion: passthrough            # passthrough | (future) weighted_mean, kalman, etc.
   nanotrack_backbone: models/nanotrack/nanotrack_backbone_sim.onnx
   nanotrack_head:     models/nanotrack/nanotrack_head_sim.onnx
   # nanotrack_accel: ONNX Runtime (CUDA/CPU) — NanoTrack v3
@@ -34,3 +36,13 @@ inference:
 serial:
   port: COM3            # Windows: COMx  |  Linux SBC: /dev/ttyUSB0 or /dev/ttyAMA0
   baud_rate: 115200
+
+benchmark:
+  trackers:                      # list of algorithms to benchmark (same format as tracker.algorithms)
+    - algorithm: kcf             # kcf | nanotrack | nanotrack_accel
+  fusion: passthrough            # passthrough | (future) weighted_mean, kalman, etc.
+  dataset: anti-uav
+  dataset_root: datasets/anti-uav
+  split: test                    # train | val | test
+  modality: IR                   # IR | RGB
+  output_dir: benchmark_results

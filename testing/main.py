@@ -29,11 +29,9 @@ import time
 import cv2
 import yaml
 
+from trackers.factory import build_from_tracker_section
 from core.bbox import BBox
 from trackers.camera import Camera
-from trackers.kcf_tracker import KCFTracker
-from trackers.nanotrack_tracker import NanoTracker
-from trackers.nanotrack_accel_tracker import NanoTrackAccel
 
 from ground_station.gui import draw_overlay
 
@@ -46,17 +44,6 @@ _ROI_STEP         = 10
 def _load_config(path: str) -> dict:
     with open(path) as f:
         return yaml.safe_load(f)
-
-
-def _make_tracker(cfg: dict):
-    algo = cfg["tracker"]["algorithm"].strip().lower()
-    if algo == "kcf":
-        return KCFTracker(cfg)
-    if algo == "nanotrack":
-        return NanoTracker(cfg)
-    if algo == "nanotrack_accel":
-        return NanoTrackAccel(cfg)
-    raise ValueError(f"Unknown tracker algorithm: {algo!r}")
 
 
 def _start_capture_thread(cam: Camera) -> queue.Queue:
@@ -89,7 +76,7 @@ def _start_capture_thread(cam: Camera) -> queue.Queue:
 
 def main(config_path: str = "config.yaml") -> None:
     cfg = _load_config(config_path)
-    tracker = _make_tracker(cfg)
+    trackers, fusion = build_from_tracker_section(cfg)
     cam = Camera(config_path)
     frame_q = _start_capture_thread(cam)
 
@@ -99,7 +86,11 @@ def main(config_path: str = "config.yaml") -> None:
     prev_time   = time.perf_counter()
     fps         = 0.0
 
-    print("QuadTrack started. Press SPACE to lock on, R to release, Q to quit.")
+    algo_names = " + ".join(
+        s["algorithm"] for s in cfg["tracker"]["algorithms"]
+    )
+    print(f"QuadTrack started [{algo_names}]. "
+          "Press SPACE to lock on, R to release, Q to quit.")
 
     try:
         while True:
@@ -112,8 +103,9 @@ def main(config_path: str = "config.yaml") -> None:
 
             # Tracker step
             if tracking:
-                result = tracker.update(frame)
-                bbox   = result.bbox
+                results = [t.update(frame) for t in trackers]
+                result  = fusion.fuse(results)
+                bbox    = result.bbox
                 if not result.confidence:
                     tracking = False
                     bbox = None
@@ -141,7 +133,8 @@ def main(config_path: str = "config.yaml") -> None:
                 h, w = frame.image.shape[:2]
                 cx, cy = w // 2, h // 2
                 bbox = BBox(cx=float(cx), cy=float(cy), w=float(roi_half * 2), h=float(roi_half * 2))
-                tracker.init(frame, bbox)
+                for t in trackers:
+                    t.init(frame, bbox)
                 tracking = True
 
     finally:
