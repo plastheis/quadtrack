@@ -1,7 +1,5 @@
 __pycache__/
 *.pyc
-*.onnx
-models/nanotrack/*.onnx
 .env
 venv/
 benchmark/datasets/anti-uav
