@@ -31,6 +31,11 @@ class BaseSequence(ABC):
     def modality(self) -> str:
         """Sensor modality used, e.g. 'IR' or 'RGB'."""
 
+    @property
+    def fps(self) -> float:
+        """Playback frame rate of the sequence. Override in subclasses."""
+        return 30.0
+
     @abstractmethod
     def __len__(self) -> int:
         """Total number of frames in the sequence."""

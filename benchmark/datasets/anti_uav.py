@@ -54,6 +54,7 @@ class AntiUAVSequence(BaseSequence):
         n_labels = len(self._exists)
         cap = cv2.VideoCapture(str(self._video_path))
         n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        self._fps: float = cap.get(cv2.CAP_PROP_FPS) or 30.0
         cap.release()
 
         if n_frames != n_labels:
@@ -74,6 +75,10 @@ class AntiUAVSequence(BaseSequence):
     @property
     def modality(self) -> str:
         return self._modality
+
+    @property
+    def fps(self) -> float:
+        return self._fps
 
     def __len__(self) -> int:
         return self._n_frames

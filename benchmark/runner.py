@@ -61,10 +61,29 @@ class BenchmarkRunner:
         print(f"Trackers : {' + '.join(tracker_names)}  |  Device: {device}")
         print(f"Sequences: {total}\n")
 
-        for seq_idx, seq in enumerate(sequences):
-            stats = self._run_sequence(seq, seq_idx, total, tracker_names, device)
-            all_seq_stats.append(stats)
-            print_sequence_progress(seq_idx, total, stats)
+        vis_cfg = self._cfg.get("benchmark", {})
+        visualize = vis_cfg.get("visualize", False)
+
+        visualizer = None
+        if visualize:
+            from benchmark.visualizer import BenchmarkVisualizer
+            visualizer = BenchmarkVisualizer(
+                width=vis_cfg.get("visualize_width", 800),
+                height=vis_cfg.get("visualize_height", 600),
+            )
+
+        try:
+            for seq_idx, seq in enumerate(sequences):
+                stats, quit_requested = self._run_sequence(
+                    seq, seq_idx, total, tracker_names, device, visualizer
+                )
+                all_seq_stats.append(stats)
+                print_sequence_progress(seq_idx, total, stats)
+                if quit_requested:
+                    break
+        finally:
+            if visualizer is not None:
+                visualizer.close()
 
         return compute_aggregate_stats(
             all_seq_stats,
@@ -81,18 +100,27 @@ class BenchmarkRunner:
 
     def _run_sequence(
         self,
-        seq:          BaseSequence,
-        seq_idx:      int,
-        total:        int,
+        seq:           BaseSequence,
+        seq_idx:       int,
+        total:         int,
         tracker_names: list[str],
-        device:       str,
-    ) -> SequenceStats:
+        device:        str,
+        visualizer,                  # BenchmarkVisualizer | None
+    ) -> tuple[SequenceStats, bool]:
+        """Run one sequence; returns (stats, quit_requested)."""
         frame0, bbox0, init_idx = seq.init_frame()
 
         for tracker in self._trackers:
             tracker.init(frame0, bbox0)
 
         records: list[FrameRecord] = []
+        n_frames = len(seq)
+
+        # Running stats for the visualiser overlay
+        running_iou_sum   = 0.0
+        running_iou_count = 0
+
+        quit_requested = False
 
         for frame_idx, (frame, gt) in enumerate(seq):
             if frame_idx <= init_idx:
@@ -108,6 +136,8 @@ class BenchmarkRunner:
                 c_pred = Centroid.from_bbox(fused.bbox)
                 c_gt   = Centroid.from_bbox(gt.bbox)
                 dist   = Centroid.distance(c_pred, c_gt)
+                running_iou_sum   += iou
+                running_iou_count += 1
             else:
                 iou  = 0.0
                 dist = math.inf
@@ -120,4 +150,23 @@ class BenchmarkRunner:
                 latency_s=fused.latency_s,
             ))
 
-        return compute_sequence_stats(seq.name, records)
+            if visualizer is not None:
+                running_iou = (
+                    running_iou_sum / running_iou_count
+                    if running_iou_count > 0 else 0.0
+                )
+                skip, quit_requested = visualizer.show(
+                    frame_img=frame.image,
+                    gt=gt,
+                    result=fused,
+                    seq_name=seq.name,
+                    frame_idx=frame_idx,
+                    n_frames=n_frames,
+                    running_iou=running_iou,
+                    iou=iou,
+                    fps=seq.fps,
+                )
+                if skip or quit_requested:
+                    break
+
+        return compute_sequence_stats(seq.name, records), quit_requested

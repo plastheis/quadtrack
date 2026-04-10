@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from trackers.base import BaseTracker
 from trackers.kcf_tracker import KCFTracker
+from trackers.csrt_tracker import CSRTTracker
 from trackers.nanotrack_tracker import NanoTracker
 from trackers.nanotrack_accel_tracker import NanoTrackAccel
 from fusion_algs.base import BaseFusionAlgorithm, PassthroughFusion
@@ -15,6 +16,7 @@ from fusion_algs.base import BaseFusionAlgorithm, PassthroughFusion
 
 _ALGO_MAP: dict[str, type[BaseTracker]] = {
     "kcf":             KCFTracker,
+    "csrt":            CSRTTracker,
     "nanotrack":       NanoTracker,
     "nanotrack_accel": NanoTrackAccel,
 }

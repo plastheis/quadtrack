@@ -16,7 +16,7 @@ camera:
 
 tracker:
   algorithms:                    # list; supports multi-tracker + fusion
-    - algorithm: kcf             # kcf | nanotrack | nanotrack_accel
+    - algorithm: kcf             # kcf | csrt | nanotrack | nanotrack_accel
   fusion: passthrough            # passthrough | (future) weighted_mean, kalman, etc.
   nanotrack_backbone: models/nanotrack/nanotrackv2_backbone.onnx
   nanotrack_head:     models/nanotrack/nanotrackv2_head.onnx
@@ -39,10 +39,14 @@ serial:
 
 benchmark:
   trackers:                      # list of algorithms to benchmark (same format as tracker.algorithms)
-    - algorithm: kcf             # kcf | nanotrack | nanotrack_accel
+    - algorithm: csrt             # kcf | csrt | nanotrack | nanotrack_accel
   fusion: passthrough            # passthrough | (future) weighted_mean, kalman, etc.
   dataset: anti-uav
   dataset_root: benchmark/datasets/anti-uav
   split: test                    # train | val | test
-  modality: IR                   # IR | RGB
+  modality: RGB                   # IR | RGB
   output_dir: benchmark_results
+  visualize: false               # true = show live playback window during benchmark
+  visualize_width: 640           # playback window width in pixels
+  visualize_height: 480          # playback window height in pixels
+  # Key bindings: n / Space = skip to next sequence   q / Esc = quit benchmark
