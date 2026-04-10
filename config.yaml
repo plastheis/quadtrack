@@ -18,14 +18,14 @@ tracker:
   algorithms:                    # list; supports multi-tracker + fusion
     - algorithm: kcf             # kcf | nanotrack | nanotrack_accel
   fusion: passthrough            # passthrough | (future) weighted_mean, kalman, etc.
-  nanotrack_backbone: models/nanotrack/nanotrack_backbone_sim.onnx
-  nanotrack_head:     models/nanotrack/nanotrack_head_sim.onnx
+  nanotrack_backbone: models/nanotrack/nanotrackv2_backbone.onnx
+  nanotrack_head:     models/nanotrack/nanotrackv2_head.onnx
   # nanotrack_accel: ONNX Runtime (CUDA/CPU) — NanoTrack v3
-  nanotrack_accel_backbone: models/nanotrackv3/nanotrack_backbone.onnx
-  nanotrack_accel_head:     models/nanotrackv3/nanotrack_head.onnx
+  nanotrack_accel_backbone: models/nanotrackv3/nanotrackv3_backbone.onnx
+  nanotrack_accel_head:     models/nanotrackv3/nanotrackv3_head.onnx
   # nanotrack_accel: RKNN (NPU) — convert from ONNX externally via rknn-toolkit2
-  nanotrack_accel_backbone_rknn: models/nanotrackv3/nanotrack_backbone.rknn
-  nanotrack_accel_head_rknn:     models/nanotrackv3/nanotrack_head.rknn
+  nanotrack_accel_backbone_rknn: models/nanotrackv3/nanotrackv3_backbone.rknn
+  nanotrack_accel_head_rknn:     models/nanotrackv3/nanotrackv3_head.rknn
 
 inference:
   device: cpu          # cuda | npu | cpu
