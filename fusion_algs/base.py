@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from trackers.base import TrackResult
+    from trackers.base import TrackResult, BaseTracker
 
 
 class BaseFusionAlgorithm(ABC):
@@ -16,7 +16,7 @@ class BaseFusionAlgorithm(ABC):
     """
 
     @abstractmethod
-    def fuse(self, results: list[TrackResult]) -> TrackResult:
+    def fuse(self, trackers: list[BaseTracker], results: list[TrackResult]) -> TrackResult:
         """Combine multiple tracker outputs into one result.
 
         Args:
@@ -35,7 +35,7 @@ class PassthroughFusion(BaseFusionAlgorithm):
     when n_trackers == 1, regardless of the config key.
     """
 
-    def fuse(self, results: list[TrackResult]) -> TrackResult:
+    def fuse(self, trackers: list[BaseTracker], results: list[TrackResult]) -> TrackResult:
         if len(results) != 1:
             raise ValueError(
                 f"PassthroughFusion expects exactly 1 tracker result, got {len(results)}. "

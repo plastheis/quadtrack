@@ -33,7 +33,7 @@ import time
 import cv2
 import yaml
 
-from trackers.factory import build_from_tracker_section
+from trackers.factory import build_trackers
 from core.bbox import BBox
 from trackers.camera import Camera
 
@@ -80,7 +80,7 @@ def _start_capture_thread(cam: Camera) -> queue.Queue:
 
 def main(config_path: str = "config.yaml") -> None:
     cfg = _load_config(config_path)
-    trackers, fusion = build_from_tracker_section(cfg)
+    trackers, fusion = build_trackers(cfg)
     cam = Camera(config_path)
     frame_q = _start_capture_thread(cam)
 

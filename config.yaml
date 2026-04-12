@@ -17,9 +17,9 @@ camera:
 tracker:
   algorithms:                    # list; supports multi-tracker + fusion
     - algorithm: mosse             # kcf | csrt | mosse | nanotrack
-    - algorithm: nanotrack
-      async: true                   # sets which tracker is async for async fusion
-  fusion: async            # passthrough | async
+    #- algorithm: nanotrack
+      #async: true                   # sets which tracker is async for async fusion
+  fusion: passthrough            # passthrough | async
   async_interval: 3         # sets the frame interval for the asynchronous tracker
   # nanotrack: ONNX Runtime (CUDA/CPU)
   nanotrack_backbone: models/nanotrackv3/nanotrackv3_backbone.onnx
@@ -39,9 +39,6 @@ serial:
   baud_rate: 115200
 
 benchmark:
-  trackers:                      # list of algorithms to benchmark (same format as tracker.algorithms)
-    - algorithm: nanotrack             # kcf | csrt | nanotrack
-  fusion: passthrough            # passthrough | async fusion
   dataset: anti-uav
   dataset_root: benchmark/datasets/anti-uav
   split: test                    # train | val | test

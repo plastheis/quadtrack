@@ -12,8 +12,12 @@ from trackers.base import BaseTracker, TrackResult
 from fusion_algs.base import BaseFusionAlgorithm
 
 class AsyncFusion(BaseFusionAlgorithm):
-    def fuse(self, results: list[TrackResult]) -> TrackResult:
-        fast = results
-        
+    def fuse(self, trackers: list[BaseTracker], results: list[TrackResult]) -> TrackResult:
+        bbox_fast = BBox
+        bbox_slow = BBox
+
+        #for r in results:
+            #if r.source
+
         fused = TrackResult
         return fused

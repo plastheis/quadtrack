@@ -48,10 +48,7 @@ class BenchmarkRunner:
         bench_cfg = self._cfg.get("benchmark", {})
         tracker_names = [
             spec["algorithm"]
-            for spec in bench_cfg.get(
-                "trackers",
-                self._cfg.get("tracker", {}).get("algorithms", [])
-            )
+            for spec in self._cfg.get("tracker", {}).get("algorithms", [])
         ]
         device = self._cfg.get("inference", {}).get("device", "cpu")
         all_seq_stats: list[SequenceStats] = []

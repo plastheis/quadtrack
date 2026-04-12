@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from benchmark.datasets.anti_uav import AntiUAVDataset
 from benchmark.runner import BenchmarkRunner
-from trackers.factory import build_from_benchmark_section
+from trackers.factory import build_trackers
 from benchmark.writer import print_aggregate_summary, write_json
 
 
@@ -50,7 +50,7 @@ def main(config_path: str = "config.yaml") -> None:
     )
 
     # --- Trackers + Fusion ---
-    trackers, fusion = build_from_benchmark_section(cfg)
+    trackers, fusion = build_trackers(cfg)
 
     # --- Runner ---
     runner = BenchmarkRunner(dataset, trackers, fusion, cfg)
