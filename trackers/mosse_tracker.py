@@ -9,19 +9,21 @@ from core.frame import Frame
 from trackers.base import BaseTracker, TrackResult
 
 
-class KCFTracker(BaseTracker):
-    """KCF tracker via OpenCV module.
+class MOSSETracker(BaseTracker):
+    """MOSSE tracker via OpenCV's legacy module.
 
-    KCF does not produce a confidence score; 1.0 is used as a placeholder
+    Requires opencv-contrib-python (drop-in replacement for opencv-python).
+    MOSSE lives under cv2.legacy in OpenCV 4.5+.
+    MOSSE does not produce a confidence score; 1.0 is used as a placeholder
     when tracking is active.
     """
 
     def __init__(self, cfg: dict) -> None:  # cfg accepted for interface uniformity
-        self._tracker: cv2.Tracker | None = None
+        self._tracker: cv2.legacy.Tracker | None = None
 
     def init(self, frame: Frame, bbox: BBox) -> None:
         """Initialise the tracker on *frame* with the given bounding box."""
-        self._tracker = cv2.TrackerKCF.create()
+        self._tracker = cv2.legacy.TrackerMOSSE.create()
         self._tracker.init(frame.image, bbox.to_xywh())
 
     def update(self, frame: Frame) -> TrackResult:
@@ -32,16 +34,16 @@ class KCFTracker(BaseTracker):
                 bbox=BBox(cx=0.0, cy=0.0, w=0.0, h=0.0),
                 confidence=0.0,
                 latency_s=0.0,
-                source="kcf",
+                source="mosse",
             )
         ok, cv2_bbox = self._tracker.update(frame.image)
         return TrackResult(
             bbox=BBox.from_xywh(*cv2_bbox),
             confidence=1.0 if ok else 0.0,
             latency_s=time.perf_counter() - t0,
-            source="kcf",
+            source="mosse",
         )
-    
+
     def name(self) -> str:
-        return "kcf"
+        return "mosse"
 

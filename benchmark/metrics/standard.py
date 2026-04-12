@@ -43,7 +43,7 @@ class SequenceStats:
     n_frames:          int
     n_visible:         int           # frames where gt_exists=True
     mean_iou:          float
-    failure_rate:      float         # visible frames where pred_conf==0.0
+    failure_rate:      float         # visible frames where b1_conf==0.0
     auc_success:       float
     auc_precision:     float
     mean_latency_s:    float
@@ -64,25 +64,6 @@ class AggregateStats:
     auc_precision:  float
     mean_latency_s: float
     per_sequence:   list[SequenceStats] = field(default_factory=list)
-
-
-# ---------------------------------------------------------------------------
-# IoU
-# ---------------------------------------------------------------------------
-
-def bbox_iou(pred: BBox, gt: BBox) -> float:
-    """Intersection-over-Union between two (cx, cy, w, h) bounding boxes."""
-    px1 = pred.cx - pred.w / 2;  px2 = pred.cx + pred.w / 2
-    py1 = pred.cy - pred.h / 2;  py2 = pred.cy + pred.h / 2
-    gx1 = gt.cx   - gt.w   / 2;  gx2 = gt.cx   + gt.w   / 2
-    gy1 = gt.cy   - gt.h   / 2;  gy2 = gt.cy   + gt.h   / 2
-
-    inter_w = max(0.0, min(px2, gx2) - max(px1, gx1))
-    inter_h = max(0.0, min(py2, gy2) - max(py1, gy1))
-    inter   = inter_w * inter_h
-
-    union = pred.w * pred.h + gt.w * gt.h - inter
-    return inter / union if union > 0.0 else 0.0
 
 
 # ---------------------------------------------------------------------------

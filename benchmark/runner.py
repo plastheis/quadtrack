@@ -8,12 +8,12 @@ from benchmark.metrics.standard import (
     AggregateStats,
     FrameRecord,
     SequenceStats,
-    bbox_iou,
     compute_aggregate_stats,
     compute_sequence_stats,
 )
 from benchmark.writer import print_sequence_progress
 from core.centroid import Centroid
+from core.iou import bbox_iou
 from fusion_algs.base import BaseFusionAlgorithm
 from trackers.base import BaseTracker
 
@@ -45,9 +45,10 @@ class BenchmarkRunner:
         """Execute the benchmark and return aggregate statistics."""
         sequences = self._dataset.sequences()
         total = len(sequences)
+        bench_cfg = self._cfg.get("benchmark", {})
         tracker_names = [
             spec["algorithm"]
-            for spec in self._cfg.get("benchmark", {}).get(
+            for spec in bench_cfg.get(
                 "trackers",
                 self._cfg.get("tracker", {}).get("algorithms", [])
             )
@@ -56,20 +57,19 @@ class BenchmarkRunner:
         all_seq_stats: list[SequenceStats] = []
 
         print(f"\nRunning benchmark: {self._dataset.name} "
-              f"[{self._cfg.get('benchmark', {}).get('split', '?')} / "
-              f"{self._cfg.get('benchmark', {}).get('modality', '?')}]")
+              f"[{bench_cfg.get('split', '?')} / "
+              f"{bench_cfg.get('modality', '?')}]")
         print(f"Trackers : {' + '.join(tracker_names)}  |  Device: {device}")
         print(f"Sequences: {total}\n")
 
-        vis_cfg = self._cfg.get("benchmark", {})
-        visualize = vis_cfg.get("visualize", False)
+        visualize = bench_cfg.get("visualize", False)
 
         visualizer = None
         if visualize:
             from benchmark.visualizer import BenchmarkVisualizer
             visualizer = BenchmarkVisualizer(
-                width=vis_cfg.get("visualize_width", 800),
-                height=vis_cfg.get("visualize_height", 600),
+                width=bench_cfg.get("visualize_width", 800),
+                height=bench_cfg.get("visualize_height", 600),
             )
 
         try:
@@ -90,8 +90,8 @@ class BenchmarkRunner:
             tracker_names=tracker_names,
             device=device,
             dataset=self._dataset.name,
-            split=self._cfg.get("benchmark", {}).get("split", "unknown"),
-            modality=self._cfg.get("benchmark", {}).get("modality", "IR"),
+            split=bench_cfg.get("split", "unknown"),
+            modality=bench_cfg.get("modality", "IR"),
         )
 
     # ------------------------------------------------------------------

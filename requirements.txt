@@ -3,7 +3,7 @@ opencv-contrib-python>=4.8.0
 pyserial>=3.5
 pyyaml>=6.0
 numpy>=1.24.0
-onnxruntime>=1.17.0
+onnxruntime-gpu>=1.24.4
 # GPU acceleration (Windows/Linux + NVIDIA): pip install onnxruntime-gpu  (replaces onnxruntime)
 # NPU on Rockchip SBC:                       pip install rknnlite          (from vendor wheel)
 # NPU simulation on PC:                      pip install rknn-toolkit2     (from Rockchip release package)

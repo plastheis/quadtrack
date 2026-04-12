@@ -23,6 +23,10 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from numpy import integer
+
+from trackers.base import BaseTracker, TrackResult
+
 import threading
 import time
 
@@ -84,8 +88,14 @@ def main(config_path: str = "config.yaml") -> None:
     bbox: BBox | None = None
     roi_half    = _DEFAULT_ROI_HALF
     prev_time   = time.perf_counter()
-    fps         = 0.0
-
+    fps         = 0.
+    
+    # async fusion setup
+    nframe = 0
+    interval = 0
+    if cfg["tracker"]["fusion"] == "async":
+        interval = cfg["tracker"]["async_interval"]
+        
     algo_names = " + ".join(
         s["algorithm"] for s in cfg["tracker"]["algorithms"]
     )
@@ -102,13 +112,20 @@ def main(config_path: str = "config.yaml") -> None:
             prev_time = now
 
             # Tracker step
+            results = []
             if tracking:
-                results = [t.update(frame) for t in trackers]
+                for t in trackers:
+                    if t.is_async and nframe % interval != 0:
+                        continue
+                    results.append(t.update(frame))
+                
                 result  = fusion.fuse(results)
                 bbox    = result.bbox
+                nframe += 1
                 if not result.confidence:
                     tracking = False
                     bbox = None
+                    nframe = 0
 
             # Draw HUD
             display = draw_overlay(frame.image, bbox, tracking, roi_half, fps)
@@ -136,6 +153,7 @@ def main(config_path: str = "config.yaml") -> None:
                 for t in trackers:
                     t.init(frame, bbox)
                 tracking = True
+                nframe = 0
 
     finally:
         cam.release()

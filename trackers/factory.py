@@ -9,22 +9,23 @@ from __future__ import annotations
 from trackers.base import BaseTracker
 from trackers.kcf_tracker import KCFTracker
 from trackers.csrt_tracker import CSRTTracker
+from trackers.mosse_tracker import MOSSETracker
 from trackers.nanotrack_tracker import NanoTracker
-from trackers.nanotrack_accel_tracker import NanoTrackAccel
 from fusion_algs.base import BaseFusionAlgorithm, PassthroughFusion
+from fusion_algs.async_fusion import AsyncFusion
 
 
 _ALGO_MAP: dict[str, type[BaseTracker]] = {
     "kcf":             KCFTracker,
     "csrt":            CSRTTracker,
+    "mosse":           MOSSETracker,
     "nanotrack":       NanoTracker,
-    "nanotrack_accel": NanoTrackAccel,
 }
 
 # Registry for future fusion algorithms.
 # Add entries here when fusion_algs/fusion.py gains real implementations.
 _FUSION_MAP: dict[str, type[BaseFusionAlgorithm]] = {
-    # "weighted_mean": WeightedMeanFusion,
+    "async": AsyncFusion,
 }
 
 
@@ -33,7 +34,7 @@ def build_trackers(algorithm_specs: list[dict], cfg: dict) -> list[BaseTracker]:
 
     Args:
         algorithm_specs: List of dicts, each with an "algorithm" key.
-                         e.g. [{"algorithm": "kcf"}, {"algorithm": "nanotrack_accel"}]
+                         e.g. [{"algorithm": "kcf"}, {"algorithm": "nanotrack"}]
         cfg: Full config dict (passed to each tracker constructor).
 
     Returns:
@@ -50,7 +51,9 @@ def build_trackers(algorithm_specs: list[dict], cfg: dict) -> list[BaseTracker]:
                 f"Unknown tracker algorithm: {algo!r}. "
                 f"Valid options: {list(_ALGO_MAP)}"
             )
-        trackers.append(_ALGO_MAP[algo](cfg))
+        t = _ALGO_MAP[algo](cfg)
+        t.is_async = spec.get("async", False)
+        trackers.append(t)
     return trackers
 
 
