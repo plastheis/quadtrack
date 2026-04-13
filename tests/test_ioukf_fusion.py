@@ -3,8 +3,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import numpy as np
 from core.bbox import BBox
+from core.frame import Frame
 from trackers.base import BaseTracker, TrackResult
 from fusion_algs.ioukf_fusion import IoUKFFusion
+
+_FRAME = Frame(image=np.zeros((480, 640, 3), dtype=np.uint8), timestamp=0.0)
 
 
 def _r(cx, cy, w=60.0, h=60.0, conf=0.9, src="fast"):
@@ -62,7 +65,7 @@ def test_fuse_initialises_from_fast_tracker():
     fast_t = _tracker("fast")
     slow_t = _tracker("slow", is_async=True, age=1)
     results = [_r(200, 300, src="fast"), _r(0, 0, src="slow")]
-    fused = fusion.fuse(CFG, [fast_t, slow_t], results)
+    fused = fusion.fuse(CFG, [fast_t, slow_t], results, _FRAME)
     assert abs(fused.bbox.cx - 200) < 5.0
     assert abs(fused.bbox.cy - 300) < 5.0
 
@@ -73,10 +76,10 @@ def test_fuse_applies_slow_update_when_age_zero():
     fast_t = _tracker("fast")
     slow_t = _tracker("slow", is_async=True, age=1)
     for _ in range(5):
-        fusion.fuse(CFG, [fast_t, slow_t], [_r(100, 100, src="fast"), _r(100, 100, src="slow")])
+        fusion.fuse(CFG, [fast_t, slow_t], [_r(100, 100, src="fast"), _r(100, 100, src="slow")], _FRAME)
     slow_t.result_age = 0
     results = [_r(100, 100, src="fast"), _r(130, 100, src="slow")]
-    fused = fusion.fuse(CFG, [fast_t, slow_t], results)
+    fused = fusion.fuse(CFG, [fast_t, slow_t], results, _FRAME)
     assert fused.bbox.cx > 100.0
 
 
@@ -85,5 +88,5 @@ def test_fast_tracker_confidence_propagated():
     fast_t = _tracker("fast")
     slow_t = _tracker("slow", is_async=True, age=1)
     results = [_r(100, 100, conf=0.0, src="fast"), _r(100, 100, src="slow")]
-    fused = fusion.fuse(CFG, [fast_t, slow_t], results)
+    fused = fusion.fuse(CFG, [fast_t, slow_t], results, _FRAME)
     assert fused.confidence == 0.0

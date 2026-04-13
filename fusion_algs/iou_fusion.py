@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from core.bbox import BBox
+from core.frame import Frame
 from core.iou import bbox_iou
 from trackers.base import BaseTracker, TrackResult
 from fusion_algs.base import BaseFusionAlgorithm
@@ -13,6 +14,11 @@ class IoUFusion(BaseFusionAlgorithm):
     Before IoU gating, the slow bbox is age-corrected: the fast tracker's
     recent velocity (EMA) projects it forward by result_age frames so both
     positions are temporally aligned.
+
+    When IoU between fast and slow drops to 0 (trackers completely diverged),
+    the slow tracker reinitialises the fast tracker at its age-corrected bbox
+    so the fast tracker can recover. Confidence falls back to the slow
+    tracker's own score instead of 0.
     """
 
     def __init__(self) -> None:
@@ -29,29 +35,33 @@ class IoUFusion(BaseFusionAlgorithm):
             h=bslow.h,
         )
 
-    def fuse(self, cfg: dict, trackers: list[BaseTracker], results: list[TrackResult]) -> TrackResult:
+    def fuse(self, cfg: dict, trackers: list[BaseTracker], results: list[TrackResult], frame: Frame) -> TrackResult:
         alpha  = cfg.get("fusion_velocity_ema_alpha", 0.3)
         thrsh1 = cfg["tracker"]["async_corr_thresh1"]
         thrsh2 = cfg["tracker"]["async_corr_thresh2"]
         a1 = 1.0 - thrsh1
         a2 = 1.0 - thrsh2
 
-        bfast     = BBox(0.0, 0.0, 0.0, 0.0)
-        bslow     = BBox(0.0, 0.0, 0.0, 0.0)
-        namefast  = ""
-        nameslow  = ""
-        age       = 0
+        bfast      = BBox(0.0, 0.0, 0.0, 0.0)
+        bslow      = BBox(0.0, 0.0, 0.0, 0.0)
+        namefast   = ""
+        nameslow   = ""
+        confslow   = 0.0
+        age        = 0
+        fast_tracker: BaseTracker | None = None
 
         for t in trackers:
             for r in results:
                 if r.source == t.name():
                     if t.is_async:
-                        bslow    = r.bbox
-                        nameslow = t.name()
-                        age      = t.result_age
+                        bslow        = r.bbox
+                        nameslow     = t.name()
+                        confslow     = r.confidence
+                        age          = t.result_age
                     else:
-                        bfast    = r.bbox
-                        namefast = t.name()
+                        bfast        = r.bbox
+                        namefast     = t.name()
+                        fast_tracker = t
 
         # Update fast-tracker velocity EMA
         if self._prev_cx is not None:
@@ -85,6 +95,10 @@ class IoUFusion(BaseFusionAlgorithm):
         else:
             fusedbbox = bslow_c
             namefused = nameslow
-            conf = iou
+            # Use slow tracker's own confidence — not IoU (which may be 0).
+            conf = confslow
+            # Reinitialise the fast tracker from slow bbox when fully diverged.
+            if iou == 0.0 and fast_tracker is not None and bslow_c.w > 0:
+                fast_tracker.init(frame, bslow_c)
 
         return TrackResult(fusedbbox, conf, 0.0, namefused)

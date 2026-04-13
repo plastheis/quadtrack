@@ -26,6 +26,7 @@ _ALGO_MAP: dict[str, type[BaseTracker]] = {
 _FUSION_MAP: dict[str, type[BaseFusionAlgorithm]] = {
     "iou":   IoUFusion,
     "ioukf": IoUKFFusion,
+    "passthrough": PassthroughFusion
 }
 
 

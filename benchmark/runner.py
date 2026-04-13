@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import time
 
 from benchmark.datasets.base import BaseDataset, BaseSequence
 from benchmark.metrics.standard import (
@@ -124,8 +125,9 @@ class BenchmarkRunner:
                 continue  # skip frames up to and including the init frame
 
             # Run all trackers
+            t0 = time.perf_counter()
             results = [t.update(frame) for t in self._trackers]
-            fused = self._fusion.fuse(self._cfg, self._trackers, results)
+            fused = self._fusion.fuse(self._cfg, self._trackers, results, frame)
 
             # Metrics
             if gt.exists and gt.bbox is not None:
@@ -139,12 +141,13 @@ class BenchmarkRunner:
                 iou  = 0.0
                 dist = math.inf
 
+
             records.append(FrameRecord(
                 gt_exists=gt.exists,
                 pred_conf=fused.confidence,
                 iou=iou,
                 center_dist=dist,
-                latency_s=fused.latency_s,
+                latency_s=time.perf_counter() - t0,
             ))
 
             if visualizer is not None:

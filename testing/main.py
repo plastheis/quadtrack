@@ -105,7 +105,7 @@ def main(config_path: str = "config.yaml") -> None:
             if tracking:
                 t0      = time.perf_counter()
                 results = [t.update(frame) for t in trackers]
-                result  = fusion.fuse(cfg, trackers, results)
+                result  = fusion.fuse(cfg, trackers, results, frame)
                 bbox    = result.bbox
                 print("latency: " + str(time.perf_counter() - t0))
 
