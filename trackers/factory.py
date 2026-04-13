@@ -6,13 +6,14 @@ exactly one place.
 """
 from __future__ import annotations
 
+from fusion_algs.iou_fusion import IoUFusion
 from trackers.base import BaseTracker
 from trackers.kcf_tracker import KCFTracker
 from trackers.csrt_tracker import CSRTTracker
 from trackers.mosse_tracker import MOSSETracker
 from trackers.nanotrack_tracker import NanoTracker
 from fusion_algs.base import BaseFusionAlgorithm, PassthroughFusion
-from fusion_algs.async_fusion import AsyncFusion
+from fusion_algs.iou_fusion import IoUFusion
 
 
 _ALGO_MAP: dict[str, type[BaseTracker]] = {
@@ -23,7 +24,7 @@ _ALGO_MAP: dict[str, type[BaseTracker]] = {
 }
 
 _FUSION_MAP: dict[str, type[BaseFusionAlgorithm]] = {
-    "async": AsyncFusion,
+    "iou": IoUFusion,
 }
 
 
@@ -49,7 +50,9 @@ def build_trackers(cfg: dict) -> tuple[list[BaseTracker], BaseFusionAlgorithm]:
                 f"Valid options: {list(_ALGO_MAP)}"
             )
         t = _ALGO_MAP[algo](cfg)
-        t.is_async = spec.get("async", False)
+        t.is_async               = spec.get("async", False)
+        t.async_submit_strategy  = spec.get("async_submit_strategy", "on_completion")
+        t.async_min_interval     = spec.get("async_min_interval", 1)
         trackers.append(t)
 
     n = len(trackers)

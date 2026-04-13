@@ -23,7 +23,10 @@ class TrackResult:
 class BaseTracker(ABC):
     """Common interface that all tracker implementations must satisfy."""
 
-    is_async: bool = False  # set by factory from the algorithm spec
+    is_async: bool = False
+    result_age: int = 0          # frames since last fresh result; 0 = fresh this frame
+    async_submit_strategy: str = "on_completion"  # "on_completion" | "fixed_interval"
+    async_min_interval: int = 1  # min frames between submissions (fixed_interval only)
 
     @abstractmethod
     def init(self, frame: Frame, bbox: BBox) -> None:
