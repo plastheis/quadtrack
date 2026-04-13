@@ -13,7 +13,6 @@ from trackers.csrt_tracker import CSRTTracker
 from trackers.mosse_tracker import MOSSETracker
 from trackers.nanotrack_tracker import NanoTracker
 from fusion_algs.base import BaseFusionAlgorithm, PassthroughFusion
-from fusion_algs.iou_fusion import IoUFusion
 
 
 _ALGO_MAP: dict[str, type[BaseTracker]] = {
