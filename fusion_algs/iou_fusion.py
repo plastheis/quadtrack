@@ -40,7 +40,6 @@ class IoUFusion(BaseFusionAlgorithm):
         bslow     = BBox(0.0, 0.0, 0.0, 0.0)
         namefast  = ""
         nameslow  = ""
-        conffast  = 0.0
         age       = 0
 
         for t in trackers:
@@ -52,7 +51,6 @@ class IoUFusion(BaseFusionAlgorithm):
                         age      = t.result_age
                     else:
                         bfast    = r.bbox
-                        conffast = r.confidence
                         namefast = t.name()
 
         # Update fast-tracker velocity EMA
