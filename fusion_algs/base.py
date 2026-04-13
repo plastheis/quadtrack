@@ -9,37 +9,19 @@ if TYPE_CHECKING:
 
 
 class BaseFusionAlgorithm(ABC):
-    """Common interface for all tracker-fusion algorithms.
-
-    A fusion algorithm accepts N TrackResult objects (one per active tracker)
-    and returns a single fused TrackResult for downstream use.
-    """
+    """Common interface for all tracker-fusion algorithms."""
 
     @abstractmethod
-    def fuse(self, trackers: list[BaseTracker], results: list[TrackResult]) -> TrackResult:
-        """Combine multiple tracker outputs into one result.
-
-        Args:
-            results: One TrackResult per active tracker, in the same order
-                     as the tracker list passed to BenchmarkRunner / main loop.
-
-        Returns:
-            A single TrackResult representing the fused estimate.
-        """
+    def fuse(self, cfg: dict, trackers: list[BaseTracker], results: list[TrackResult]) -> TrackResult:
+        """Combine multiple tracker outputs into one result."""
 
 
 class PassthroughFusion(BaseFusionAlgorithm):
-    """Identity fusion — used when exactly one tracker is active.
+    """Identity fusion — used when exactly one tracker is active."""
 
-    Passes results[0] through unchanged.  build_fusion() always selects this
-    when n_trackers == 1, regardless of the config key.
-    """
-
-    def fuse(self, trackers: list[BaseTracker], results: list[TrackResult]) -> TrackResult:
+    def fuse(self, cfg: dict, trackers: list[BaseTracker], results: list[TrackResult]) -> TrackResult:
         if len(results) != 1:
             raise ValueError(
-                f"PassthroughFusion expects exactly 1 tracker result, got {len(results)}. "
-                "Set a real fusion algorithm (e.g. weighted_mean) in config when using "
-                "multiple trackers."
+                f"PassthroughFusion expects exactly 1 result, got {len(results)}."
             )
         return results[0]

@@ -23,8 +23,6 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from numpy import integer
-
 from trackers.base import BaseTracker, TrackResult
 
 import threading
@@ -84,18 +82,12 @@ def main(config_path: str = "config.yaml") -> None:
     cam = Camera(config_path)
     frame_q = _start_capture_thread(cam)
 
-    tracking    = False
+    tracking   = False
     bbox: BBox | None = None
-    roi_half    = _DEFAULT_ROI_HALF
-    prev_time   = time.perf_counter()
-    fps         = 0.
-    
-    # async fusion setup
-    nframe = 0
-    interval = 0
-    if cfg["tracker"]["fusion"] == "async":
-        interval = cfg["tracker"]["async_interval"]
-        
+    roi_half   = _DEFAULT_ROI_HALF
+    prev_time  = time.perf_counter()
+    fps        = 0.
+
     algo_names = " + ".join(
         s["algorithm"] for s in cfg["tracker"]["algorithms"]
     )
@@ -106,54 +98,42 @@ def main(config_path: str = "config.yaml") -> None:
         while True:
             frame = frame_q.get()
 
-            # FPS measurement
             now       = time.perf_counter()
             fps       = 1.0 / max(now - prev_time, 1e-6)
             prev_time = now
 
-            # Tracker step
-            results = []
             if tracking:
-                for t in trackers:
-                    if t.is_async and nframe % interval != 0:
-                        continue
-                    results.append(t.update(frame))
-                
-                result  = fusion.fuse(results)
+                t0      = time.perf_counter()
+                results = [t.update(frame) for t in trackers]
+                result  = fusion.fuse(cfg, trackers, results)
                 bbox    = result.bbox
-                nframe += 1
+                print("latency: " + str(time.perf_counter() - t0))
+
                 if not result.confidence:
                     tracking = False
                     bbox = None
-                    nframe = 0
 
-            # Draw HUD
             display = draw_overlay(frame.image, bbox, tracking, roi_half, fps)
             cv2.imshow("QuadTrack", display)
-
             key = cv2.waitKey(1) & 0xFF
 
             if key == ord("q"):
                 break
-
             elif key == ord("r"):
                 tracking = False
                 bbox = None
-
             elif key == ord("["):
                 roi_half = max(_ROI_MIN, roi_half - _ROI_STEP)
-
             elif key == ord("]"):
                 roi_half = min(_ROI_MAX, roi_half + _ROI_STEP)
-
             elif key == ord(" ") and not tracking:
                 h, w = frame.image.shape[:2]
                 cx, cy = w // 2, h // 2
-                bbox = BBox(cx=float(cx), cy=float(cy), w=float(roi_half * 2), h=float(roi_half * 2))
+                bbox = BBox(cx=float(cx), cy=float(cy),
+                            w=float(roi_half * 2), h=float(roi_half * 2))
                 for t in trackers:
                     t.init(frame, bbox)
                 tracking = True
-                nframe = 0
 
     finally:
         cam.release()

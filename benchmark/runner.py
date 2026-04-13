@@ -125,7 +125,7 @@ class BenchmarkRunner:
 
             # Run all trackers
             results = [t.update(frame) for t in self._trackers]
-            fused = self._fusion.fuse(results)
+            fused = self._fusion.fuse(self._cfg, self._trackers, results)
 
             # Metrics
             if gt.exists and gt.bbox is not None:
