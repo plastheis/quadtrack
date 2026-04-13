@@ -15,18 +15,30 @@ camera:
   # gstreamer_pipeline: "nvarguscamerasrc ! video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1 ! nvvidconv ! video/x-raw,format=BGRx ! videoconvert ! video/x-raw,format=BGR ! appsink drop=1"
 
 tracker:
-  algorithms:                    # list; supports multi-tracker + fusion
-    - algorithm: mosse             # kcf | csrt | mosse | nanotrack
-    #- algorithm: nanotrack
-      #async: true                   # sets which tracker is async for async fusion
-  fusion: passthrough            # passthrough | async
-  async_interval: 3         # sets the frame interval for the asynchronous tracker
+  algorithms:
+    - algorithm: mosse
+    - algorithm: nanotrack
+      async: true
+      async_submit_strategy: "on_completion"   # "on_completion" | "fixed_interval"
+      async_min_interval: 1                    # used only with fixed_interval
+  fusion: iou              # iou | ioukf
+  async_corr_thresh1: 0.7
+  async_corr_thresh2: 0.3
   # nanotrack: ONNX Runtime (CUDA/CPU)
   nanotrack_backbone: models/nanotrackv3/nanotrackv3_backbone.onnx
   nanotrack_head:     models/nanotrackv3/nanotrackv3_head.onnx
   # nanotrack: RKNN (NPU) — convert from ONNX externally via rknn-toolkit2
   nanotrack_backbone_rknn: models/nanotrackv3/nanotrackv3_backbone.rknn
   nanotrack_head_rknn:     models/nanotrackv3/nanotrackv3_head.rknn
+
+# IoU dead-reckoning fusion settings
+fusion_velocity_ema_alpha: 0.3    # EMA smoothing for fast-tracker velocity
+
+# Kalman filter fusion settings (used when fusion: ioukf)
+kf_process_noise:   0.01   # Q — target acceleration uncertainty
+kf_fast_meas_noise: 5.0    # R_fast — fast tracker centroid noise (pixels²)
+kf_slow_meas_noise: 1.0    # R_slow — slow tracker centroid noise (pixels²)
+kf_age_noise_scale: 0.5    # inflates R_slow per frame of staleness
 
 inference:
   device: cuda          # cuda | npu | cpu

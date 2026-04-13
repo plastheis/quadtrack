@@ -7,6 +7,7 @@ exactly one place.
 from __future__ import annotations
 
 from fusion_algs.iou_fusion import IoUFusion
+from fusion_algs.ioukf_fusion import IoUKFFusion
 from trackers.base import BaseTracker
 from trackers.kcf_tracker import KCFTracker
 from trackers.csrt_tracker import CSRTTracker
@@ -23,7 +24,8 @@ _ALGO_MAP: dict[str, type[BaseTracker]] = {
 }
 
 _FUSION_MAP: dict[str, type[BaseFusionAlgorithm]] = {
-    "iou": IoUFusion,
+    "iou":   IoUFusion,
+    "ioukf": IoUKFFusion,
 }
 
 
