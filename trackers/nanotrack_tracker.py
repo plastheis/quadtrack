@@ -266,6 +266,10 @@ class NanoTracker(BaseTracker):
     # Public tracker interface
     # ------------------------------------------------------------------
 
+    def close(self) -> None:
+        """Shut down the background inference thread."""
+        self._executor.shutdown(wait=False, cancel_futures=True)
+
     def name(self) -> str:
         return "nanotrack"
 
@@ -273,6 +277,10 @@ class NanoTracker(BaseTracker):
         """Initialise on *frame* with *bbox*."""
         if self._pending_future is not None and not self._pending_future.done():
             self._pending_future.cancel()
+            try:
+                self._pending_future.result()  # wait for running thread to finish; discard result
+            except Exception:
+                pass
         self._pending_future  = None
         self._cached_result   = None
         self.result_age       = 0
@@ -393,8 +401,9 @@ class NanoTracker(BaseTracker):
             self._cached_result = result
             self._pending_future = None
             self.result_age = 0
-        else:
+        elif self._pending_future is not None:
             self.result_age += 1
+        # else: no future running (fixed_interval idle) — result_age stays unchanged
 
         if self._pending_future is None:
             should_submit = True
