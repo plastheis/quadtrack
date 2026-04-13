@@ -52,6 +52,12 @@ class NanoTracker(BaseTracker):
     """NanoTrack tracker using ONNX Runtime (CUDA/CPU) or RKNN (NPU)."""
 
     def __init__(self, cfg: dict) -> None:
+        from concurrent.futures import ThreadPoolExecutor
+        self._executor       = ThreadPoolExecutor(max_workers=1)
+        self._pending_future = None
+        self._cached_result: TrackResult | None = None
+        self._frame_count    = 0
+
         device = cfg.get("inference", {}).get("device", "cpu").strip().lower()
 
         self._use_rknn = False
@@ -265,6 +271,13 @@ class NanoTracker(BaseTracker):
 
     def init(self, frame: Frame, bbox: BBox) -> None:
         """Initialise on *frame* with *bbox*."""
+        if self._pending_future is not None and not self._pending_future.done():
+            self._pending_future.cancel()
+        self._pending_future  = None
+        self._cached_result   = None
+        self.result_age       = 0
+        self._frame_count     = 0
+
         self._cx = bbox.cx
         self._cy = bbox.cy
         self._w  = bbox.w
@@ -287,98 +300,112 @@ class NanoTracker(BaseTracker):
         feat   = self._run_backbone(self._preprocess(crop))   # [1,C,16,16]
         self._t_feat = feat[:, :, self._t_lo : self._t_hi, self._t_lo : self._t_hi]
 
-    def update(self, frame: Frame) -> TrackResult:
-        """Track one frame."""
+    def _run_inference(
+        self,
+        frame: Frame,
+        cx: float, cy: float, w: float, h: float,
+    ) -> tuple[TrackResult, float, float, float, float]:
+        """Run backbone + head inference. Thread-safe: all mutable state passed as args."""
         t0 = time.perf_counter()
         h_img, w_img = frame.image.shape[:2]
 
-        # Search window size — matches OpenCV update()
-        s_sum  = self._w + self._h
-        wc     = self._w + CONTEXT_AMOUNT * s_sum
-        hc     = self._h + CONTEXT_AMOUNT * s_sum
+        s_sum  = w + h
+        wc     = w + CONTEXT_AMOUNT * s_sum
+        hc     = h + CONTEXT_AMOUNT * s_sum
         sz     = np.sqrt(wc * hc)
-        scale_z = EXEMPLAR_SIZE / sz               # px-per-feature scale
+        scale_z = EXEMPLAR_SIZE / sz
         sx      = sz * (INSTANCE_SIZE / EXEMPLAR_SIZE)
+        tw_s = w * scale_z
+        th_s = h * scale_z
 
-        # Scale target size to search-image coordinates for penalty calc
-        tw_s = self._w * scale_z
-        th_s = self._h * scale_z
-
-        crop   = self._get_subwindow(frame.image, self._cx, self._cy, int(sx), INSTANCE_SIZE)
-        s_feat = self._run_backbone(self._preprocess(crop))   # [1,C,16,16]
+        crop   = self._get_subwindow(frame.image, cx, cy, int(sx), INSTANCE_SIZE)
+        s_feat = self._run_backbone(self._preprocess(crop))
         cls, loc = self._run_head(self._t_feat, s_feat)
 
-        # --- Score (softmax, positive class) ---
-        cls0 = cls[0]   # [2, S, S]
+        cls0 = cls[0]
         mx   = cls0.max(axis=0, keepdims=True)
         exp  = np.exp(cls0 - mx)
-        score = (exp / exp.sum(axis=0, keepdims=True))[1]   # [S, S]
+        score = (exp / exp.sum(axis=0, keepdims=True))[1]
 
-        # --- Box decode (LTRB from grid — matches OpenCV predX1/X2/Y1/Y2) ---
-        l, t, r, b = loc[0, 0], loc[0, 1], loc[0, 2], loc[0, 3]   # [S,S] each
+        l, t, r, b = loc[0, 0], loc[0, 1], loc[0, 2], loc[0, 3]
         pred_x1 = self._grid_x - l
         pred_y1 = self._grid_y - t
         pred_x2 = self._grid_x + r
         pred_y2 = self._grid_y + b
+        pred_w  = pred_x2 - pred_x1
+        pred_h  = pred_y2 - pred_y1
 
-        pred_w = pred_x2 - pred_x1   # [S,S] in search-image px
-        pred_h = pred_y2 - pred_y1
-
-        # --- Penalty (scale + ratio) — matches OpenCV sizeCal / elementReciprocalMax ---
         def _rmax(v):
             return np.maximum(v, 1.0 / np.maximum(v, 1e-6))
 
         sc = _rmax(self._size_cal(pred_w, pred_h) / self._size_cal(tw_s, th_s))
-        rc = _rmax((pred_w / np.maximum(pred_h, 1e-6))
-                   / (self._w   / max(self._h,   1e-6)))
-        penalty = np.exp(-(sc * rc - 1.0) * PENALTY_K)
-
-        # --- Hanning window + select best ---
-        pscore    = score * penalty * (1.0 - WINDOW_INFLUENCE) + self._window * WINDOW_INFLUENCE
-        best      = np.unravel_index(np.argmax(pscore), pscore.shape)
-        bi, bj    = best
+        rc = _rmax((pred_w / np.maximum(pred_h, 1e-6)) / (w / max(h, 1e-6)))
+        penalty  = np.exp(-(sc * rc - 1.0) * PENALTY_K)
+        pscore   = score * penalty * (1.0 - WINDOW_INFLUENCE) + self._window * WINDOW_INFLUENCE
+        best     = np.unravel_index(np.argmax(pscore), pscore.shape)
+        bi, bj   = best
 
         best_score   = float(score[bi, bj])
         best_penalty = float(penalty[bi, bj])
 
-        # --- Predicted centre / size in search-image space ---
         pred_xs = (pred_x1[bi, bj] + pred_x2[bi, bj]) / 2.0
         pred_ys = (pred_y1[bi, bj] + pred_y2[bi, bj]) / 2.0
         pred_bw = float(pred_w[bi, bj])
         pred_bh = float(pred_h[bi, bj])
 
-        # --- Convert to original-image space (matches OpenCV diffXs/diffYs) ---
-        # OpenCV uses integer division: instanceSize/2 = 127 (C++ int math)
         diff_x = (pred_xs - (INSTANCE_SIZE // 2)) / scale_z
         diff_y = (pred_ys - (INSTANCE_SIZE // 2)) / scale_z
+        out_w  = pred_bw / scale_z
+        out_h  = pred_bh / scale_z
 
-        # Size in original-image space
-        out_w = pred_bw / scale_z
-        out_h = pred_bh / scale_z
-
-        # --- Update state — position: direct; size: EMA (matches OpenCV) ---
-        lr = best_penalty * best_score * LR
-
-        new_cx = self._cx + diff_x
-        new_cy = self._cy + diff_y
-        new_w  = out_w * lr + self._w * (1.0 - lr)
-        new_h  = out_h * lr + self._h * (1.0 - lr)
-
-        # Clamp to image
-        new_cx = float(np.clip(new_cx, 0, w_img))
-        new_cy = float(np.clip(new_cy, 0, h_img))
-        new_w  = float(np.clip(new_w,  MIN_SIZE, w_img))
-        new_h  = float(np.clip(new_h,  MIN_SIZE, h_img))
-
-        self._cx = new_cx
-        self._cy = new_cy
-        self._w  = new_w
-        self._h  = new_h
+        lr     = best_penalty * best_score * LR
+        new_cx = float(np.clip(cx + diff_x, 0, w_img))
+        new_cy = float(np.clip(cy + diff_y, 0, h_img))
+        new_w  = float(np.clip(out_w * lr + w * (1.0 - lr), MIN_SIZE, w_img))
+        new_h  = float(np.clip(out_h * lr + h * (1.0 - lr), MIN_SIZE, h_img))
 
         ok = best_score > SCORE_THRESHOLD
-        return TrackResult(
+        result = TrackResult(
             bbox=BBox(cx=new_cx, cy=new_cy, w=new_w, h=new_h),
             confidence=best_score if ok else 0.0,
             latency_s=time.perf_counter() - t0,
             source="nanotrack",
         )
+        return result, new_cx, new_cy, new_w, new_h
+
+    def update(self, frame: Frame) -> TrackResult:
+        """Return latest cached result immediately; inference runs in background."""
+        if self._cached_result is None:
+            result, cx, cy, w, h = self._run_inference(
+                frame, self._cx, self._cy, self._w, self._h
+            )
+            self._cx, self._cy, self._w, self._h = cx, cy, w, h
+            self._cached_result = result
+            self.result_age = 0
+            self._pending_future = self._executor.submit(
+                self._run_inference, frame, self._cx, self._cy, self._w, self._h
+            )
+            return self._cached_result
+
+        if self._pending_future is not None and self._pending_future.done():
+            result, cx, cy, w, h = self._pending_future.result()
+            self._cx, self._cy, self._w, self._h = cx, cy, w, h
+            self._cached_result = result
+            self._pending_future = None
+            self.result_age = 0
+        else:
+            self.result_age += 1
+
+        if self._pending_future is None:
+            should_submit = True
+            if self.async_submit_strategy == "fixed_interval":
+                self._frame_count += 1
+                should_submit = self._frame_count >= self.async_min_interval
+                if should_submit:
+                    self._frame_count = 0
+            if should_submit:
+                self._pending_future = self._executor.submit(
+                    self._run_inference, frame, self._cx, self._cy, self._w, self._h
+                )
+
+        return self._cached_result
