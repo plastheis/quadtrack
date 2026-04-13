@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import numpy as np
+import time
 
 from core.bbox import BBox
 from core.frame import Frame
@@ -62,6 +63,7 @@ class IoUKFFusion(BaseFusionAlgorithm):
         confslow     = 0.0
         age          = 0
         fast_tracker: BaseTracker | None = None
+        t0 = time.perf_counter()
 
         for t in trackers:
             for r in results:
@@ -109,4 +111,4 @@ class IoUKFFusion(BaseFusionAlgorithm):
         fused_bbox = BBox(float(self._x[0]), float(self._x[1]),
                           self._fused_w, self._fused_h)
         namefused  = namefast + " + " + nameslow if age == 0 else namefast
-        return TrackResult(fused_bbox, conf, 0.0, namefused)
+        return TrackResult(fused_bbox, conf, time.perf_counter() - t0, namefused)

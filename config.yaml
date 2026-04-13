@@ -16,14 +16,14 @@ camera:
 
 tracker:
   algorithms:
-    - algorithm: mosse
     - algorithm: nanotrack
+    - algorithm: csrt
       async: true
       async_submit_strategy: "on_completion"   # "on_completion" | "fixed_interval"
-      async_min_interval: 1                    # used only with fixed_interval
+      async_min_interval: 3                    # used only with fixed_interval
   fusion: iou              # iou | ioukf
   async_corr_thresh1: 0.9
-  async_corr_thresh2: 0.8
+  async_corr_thresh2: 0.2
   # nanotrack: ONNX Runtime (CUDA/CPU)
   nanotrack_backbone: models/nanotrackv3/nanotrackv3_backbone.onnx
   nanotrack_head:     models/nanotrackv3/nanotrackv3_head.onnx
@@ -35,10 +35,10 @@ tracker:
 fusion_velocity_ema_alpha: 0.1    # EMA smoothing for fast-tracker velocity
 
 # Kalman filter fusion settings (used when fusion: ioukf)
-kf_process_noise:   0.01   # Q — target acceleration uncertainty
-kf_fast_meas_noise: 5.0    # R_fast — fast tracker centroid noise (pixels²)
+kf_process_noise:   2   # Q — target acceleration uncertainty
+kf_fast_meas_noise: 25.0    # R_fast — fast tracker centroid noise (pixels²)
 kf_slow_meas_noise: 1.0    # R_slow — slow tracker centroid noise (pixels²)
-kf_age_noise_scale: 0.5    # inflates R_slow per frame of staleness
+kf_age_noise_scale: 0.1    # inflates R_slow per frame of staleness
 
 inference:
   device: cuda          # cuda | npu | cpu
@@ -56,7 +56,7 @@ benchmark:
   split: test                    # train | val | test
   modality: RGB                   # IR | RGB
   output_dir: benchmark_results
-  visualize: true               # true = show live playback window during benchmark
+  visualize: false               # true = show live playback window during benchmark
   visualize_width: 640           # playback window width in pixels
   visualize_height: 480          # playback window height in pixels
   # Key bindings: n / Space = skip to next sequence   q / Esc = quit benchmark

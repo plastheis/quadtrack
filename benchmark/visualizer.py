@@ -65,7 +65,7 @@ class BenchmarkVisualizer:
         n_frames:     int,
         running_iou:  float,
         iou:          float,
-        fps:          float = 30.0,
+        fps:          float = 60.0,
     ) -> tuple[bool, bool]:
         """Render the frame and return (skip_sequence, quit)."""
         src_h, src_w = frame_img.shape[:2]

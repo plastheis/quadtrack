@@ -147,7 +147,7 @@ class BenchmarkRunner:
                 pred_conf=fused.confidence,
                 iou=iou,
                 center_dist=dist,
-                latency_s=time.perf_counter() - t0,
+                latency_s=(time.perf_counter() - t0) + fused.latency_s,
             ))
 
             if visualizer is not None:
